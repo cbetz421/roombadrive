@@ -86,6 +86,19 @@ int main(int argc, char **argv) {
 				mvprintw(7, 0, " ir:%02d buttons:%02d distance:%05d angle:%05d charging_state:%02d voltage:%02d", 
 					sensor_data.ir, sensor_data.buttons, sensor_data.distance, sensor_data.angle, sensor_data.charging_state,
 					sensor_data.voltage);
+				mvprintw(8, 0, " current:%02d battery_temperature:%02d battery_charge:%05d, battery_capacity:%05d", 
+					sensor_data.current, sensor_data.battery_temperature, sensor_data.battery_charge, sensor_data.battery_capacity);
+				mvprintw(9, 0, " wall_signal:%05d cliff_left_signal:%05d cliff_front_left_signal:%05d cliff_font_right_signal:%05d", 
+					sensor_data.wall_signal, sensor_data.cliff_left_signal, sensor_data.cliff_front_left_signal, 
+					sensor_data.cliff_font_right_signal);
+				mvprintw(10, 0, " cliff_font_right_signal:%05d cliff_right_signal:%05d user_digial_input:%02d", 
+					sensor_data.cliff_font_right_signal, sensor_data.cliff_right_signal, sensor_data.user_digial_input);
+				mvprintw(11, 0, " user_analog_input:%05d charging_source_available:%02d OI_mode:%02d song_number:%02d", 
+					sensor_data.user_analog_input, sensor_data.charging_source_available, sensor_data.OI_mode, sensor_data.song_number);
+				mvprintw(12, 0, " song_playing:%02d number_stream_packets:%02d velocity:%05d radius:%05d",
+					sensor_data.song_playing, sensor_data.number_stream_packets, sensor_data.velocity, sensor_data.radius);
+				mvprintw(13, 0, " right_velocity:%05d left_velocity:%05d",
+					sensor_data.right_velocity, sensor_data.left_velocity);
 			} else {
 				mvprintw(4, 0, "BAD SENSOR DATA  --------");					
 			}
