@@ -16,7 +16,16 @@ AM_PROG_LIBTOOL
 
 AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
 
-PKG_CHECK_MODULES(NCURSES, ncurses >= 5.7.0)
+PKG_CHECK_EXISTS(ncurses, ncurses_pkg_config=yes, ncurses_pkg_config=no)
+
+if test x$ncurses_pkg_config = xyes ; then
+	PKG_CHECK_MODULES(NCURSES, ncurses >= 5.7.0)
+else
+	AC_PATH_PROG(NCURSES_CONFIG, ncurses5-config, no)
+	NCURSES_LIBS=`"$NCURSES_CONFIG" --libs`
+	NCURSES_CFLAGS=`"$NCURSES_CONFIG" --cflags`
+fi
+
 AC_SUBST(NCURSES_LIBS)
 AC_SUBST(NCURSES_CFLAGS)
 
