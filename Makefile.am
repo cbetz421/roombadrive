@@ -1,1 +1,1 @@
-SUBDIRS = libsrc src
+SUBDIRS = libsrc daemon src

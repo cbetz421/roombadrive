@@ -29,6 +29,17 @@ fi
 AC_SUBST(NCURSES_LIBS)
 AC_SUBST(NCURSES_CFLAGS)
 
+
+PKG_CHECK_MODULES(GLIB2, glib-2.0 >= 2.0.0 \
+                        gthread-2.0 >= 2.0.0 \
+                        gobject-2.0 >= 2.0.0)
+AC_SUBST(GLIB2_CFLAGS)
+AC_SUBST(GLIB2_LIBS)
+
+dnl PKG_CHECK_MODULES(GTK2, gtk+-2.0 >= 2.12)
+dnl AC_SUBST(GTK2_CFLAGS)
+dnl AC_SUBST(GTK2_LIBS)
+
 AC_SUBST(CFLAGS)
 AC_SUBST(CPPFLAGS)
 AC_SUBST(LDFLAGS)
@@ -36,6 +47,7 @@ AC_SUBST(LDFLAGS)
 AC_OUTPUT([
 Makefile
 libsrc/Makefile
+daemon/Makefile
 src/Makefile
 ])
 

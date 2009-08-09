@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
 	char data[20];
 	//int i;	
 	
-	fd = serial_open("/dev/ttyS0");
+	fd = serial_open(argv[1]);
 	if(fd <= 0) {
 		printf("NO roomba!\n");
 		exit(1);	
