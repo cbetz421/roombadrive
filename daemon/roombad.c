@@ -26,6 +26,8 @@ struct _client {
 struct _client clients[MAX_CLIENTS];
 
 int serial_fd = 0;
+_sensor_data sensor_data;
+
 
 static int socket_init() {
 	struct sockaddr_in server_addr;
@@ -207,10 +209,22 @@ static int client_responder() {
 
 		}
 	}
-
 	return FALSE;
 }
 
+static int client_send_stream() {
+	int i;
+	
+	for(i=0;i<MAX_CLIENTS;i++) {
+		if(clients[i].fd > 0) {
+			char buf[1024];
+			sprintf(buf, "S|%d|%d|%d|%d\n", sensor_data.bumps_and_wheel_drops, sensor_data.wall,
+				sensor_data.distance, sensor_data.battery_capacity);
+			write(clients[i].fd, buf, strlen(buf));
+		}
+	}
+	return TRUE;
+}
 
 int main(int argc, char **argv) {
 	int socket_fd = socket_init();
@@ -234,12 +248,20 @@ int main(int argc, char **argv) {
 
 	roomba_start_communication(serial_fd);
 	roomba_init_safe(serial_fd);
-
+	roomba_get_sensor_data(serial_fd, &sensor_data);
+	roomba_start_stream(serial_fd);
+	
 	while(1) {	
+		int didit;
 		client_getter(socket_fd);
 		client_monitor();
 		client_responder();
-		usleep(20000);
+		didit = roomba_read_stream(serial_fd, &sensor_data);
+		if(didit == TRUE)
+			client_send_stream();
+		else
+			usleep(20000);
+		
 	}
 	close(socket_fd);
 	return 0;
