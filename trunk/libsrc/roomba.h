@@ -48,3 +48,6 @@ int roomba_wheels(int fd, short left, short right);
 int roomba_start_communication(int fd);
 int roomba_stop(int fd);
 _sensor_data* roomba_get_sensor_data(int fd, _sensor_data *sensor_data);
+int roomba_start_stream(int fd);
+int roomba_stop_stream(int fd);
+int roomba_read_stream(int fd, _sensor_data *sensor_data);

@@ -7,8 +7,14 @@
 #include <unistd.h>
 #include <strings.h>
 #include <sys/ioctl.h>
+#include <string.h>
 #include <arpa/inet.h>
+
+#include <glib.h>
+
 #include "roomba.h"
+
+
 
 /* Open the serial port, set the params, etc */
 
@@ -163,5 +169,58 @@ _sensor_data* roomba_get_sensor_data(int fd, _sensor_data *sensor_data) {
 	}
 	
 	return NULL;
+}
+
+int roomba_start_stream(int fd) {
+	char data[6];
+	data[0] = 148;
+	data[1] = 4;
+	data[2] = 7; //bumps and wheel drop [1]
+	data[3] = 8; //wall [1]
+	data[4] = 19; //distance [2]
+	data[5] = 26; //battery capacity [2]
+	return serial_write(fd, data, 6);
+}
+
+int roomba_stop_stream(int fd) {
+	char data[2];
+	data[0] = 150;
+	data[1] = 0;
+	return serial_write(fd, data, 2);
+}
+
+int roomba_read_stream(int fd, _sensor_data *sensor_data) {
+	static GString *string = NULL;
+	char buf[512];
+	int res;
+	int didit= FALSE;
+	
+	if(string == NULL) {
+		string = g_string_new(NULL);	
+	}
+	
+	res = read(fd, buf, 512);
+	if(res > 0) {
+		string = g_string_append_len(string, buf, res);	
+	}
+	
+	while(string->len >= 13) { //[19] + [len] + [pakcet id 1] + [packet data] ... [checksum]
+		if(string->str[0] == 19) {
+			short tmp;
+			sensor_data->bumps_and_wheel_drops = string->str[3];
+			sensor_data->wall = string->str[5];
+			memcpy(&tmp, string->str+7, 2);
+			sensor_data->distance = htons(tmp);
+			memcpy(&tmp, string->str+10, 2);
+			sensor_data->battery_capacity = htons(tmp);
+			didit = TRUE;
+			g_string_erase(string, 0, 13);
+		} else {
+			//All packets need to start with 19
+			g_string_erase(string, 0, 1);	
+		}
+	}
+	
+	return didit;
 }
 
