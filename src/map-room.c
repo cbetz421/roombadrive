@@ -24,6 +24,7 @@ int main(int argc, char *argv[]) {
 	GtkWidget *window;
 	GtkWidget *button;
 	GtkWidget *clock;
+	
 
 
 	gtk_init(&argc, &argv);
