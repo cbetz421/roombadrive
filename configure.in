@@ -36,9 +36,16 @@ PKG_CHECK_MODULES(GLIB2, glib-2.0 >= 2.0.0 \
 AC_SUBST(GLIB2_CFLAGS)
 AC_SUBST(GLIB2_LIBS)
 
-dnl PKG_CHECK_MODULES(GTK2, gtk+-2.0 >= 2.12)
-dnl AC_SUBST(GTK2_CFLAGS)
-dnl AC_SUBST(GTK2_LIBS)
+
+PKG_CHECK_MODULES(GTK2, gtk+-2.0 >= 2.12, enable_gtk=yes, enable_gtk=no)
+if test x$enable_gtk = xno; then
+	echo "*** WARNING: NO GTK SO NO GRAPHICAL STUFF"
+else
+	AC_DEFINE(HAVE_GTK2,1,[Build with GTK2 Support])
+	AC_SUBST(GTK2_CFLAGS)
+	AC_SUBST(GTK2_LIBS)
+fi
+AM_CONDITIONAL(HAVE_GTK2, test x$enable_gtk = xyes)
 
 AC_SUBST(CFLAGS)
 AC_SUBST(CPPFLAGS)
