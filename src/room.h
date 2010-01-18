@@ -26,9 +26,17 @@ G_BEGIN_DECLS
 typedef struct _EggRoomFace		EggRoomFace;
 typedef struct _EggRoomFaceClass	EggRoomFaceClass;
 
+struct _event {
+	char type;
+	long l1;
+	long l2;	
+};
+
 struct _EggRoomFace
 {
 	GtkDrawingArea parent;
+	long distance;
+	GSList *events;
 
 	/* < private > */
 };
@@ -39,6 +47,9 @@ struct _EggRoomFaceClass
 };
 
 GtkWidget *egg_room_face_new (void);
+void egg_room_face_redraw_canvas (GtkWidget *widget);
+void egg_room_face_set_distance (GtkWidget *widget, long distance);
+void egg_room_face_add_event (GtkWidget *widget, struct _event *event);
 
 G_END_DECLS
 
