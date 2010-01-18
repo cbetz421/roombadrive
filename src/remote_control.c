@@ -8,38 +8,44 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
-
 #include <arpa/inet.h>
 
+/* TODO: pivot */
+
+#define KEY_UP 65362
+#define KEY_LEFT 65361
+#define KEY_RIGHT 65363
+#define KEY_DOWN 65364
+
+#define SPEED_STEP 10
+#define SPEED_MAX 1000
+
 int sock;
+int left_speed=0;
+int right_speed=0;
 
-int left_speed=10;
-int right_speed=10;
-
-void go_forward() {
+void set_speed(int sockfd, short left,short right) {
 	char buf[128];
-	short l,r;
+	left_speed = left;
+	right_speed = right;
 
-	g_print("going forward at speeds of %d:%d\n",left_speed,right_speed);
-
-	// TODO: use htons
-	l=left_speed;
-	r=right_speed;
+	g_print("going forward at speeds of %d:%d\n",left, right);
 	buf[0] = 'W';
-	memcpy(buf+1,&l,2);
-	memcpy(buf+3,&r,2);
+	memcpy(buf+1,&left,2);
+	memcpy(buf+3,&right,2);
 
-//	sprintf(buf,"W",speed);
-	send(sock, buf, 5, 0);
+	send(sockfd, buf, 5, 0);
 }
 
 void stop() {
+	left_speed = 0;
+	right_speed = 0;
 	send(sock, "S", 1, 0);
 }
 
 static void hello( GtkWidget *widget,
                    gpointer   data ) {
-    g_print ("Hello World\n");
+    g_print ("Quit\n");
 }
 
 static gboolean delete_event( GtkWidget *widget,
@@ -58,15 +64,21 @@ static gboolean key_press_event( GtkWidget *widget,
 
    	g_print ("[%d] key press event of (%s) [%d] occurred\n",time,((GdkEventKey*)event)->string,keyval);	
 
-	/* if (keyval == 65362) { */
-	/* 	go_forward(); */
-	/* } else if (keyval == 65363) { // right */
-	/* 	left_speed =- 3; */
-	/* 	go_forward(); */
-	/* } else if (keyval == 65361) { // left */
-	/* 	right_speed =- 3; */
-	/* 	go_forward(); */
-	/* } */
+	if (keyval == KEY_UP) {
+		if (left_speed < 0 || right_speed < 0)
+			stop();
+		else
+			set_speed(sock, SPEED_STEP, SPEED_STEP);
+	} else if (keyval == KEY_RIGHT) {
+		set_speed(sock, left_speed-SPEED_STEP, right_speed);
+	} else if (keyval == KEY_LEFT) {
+		set_speed(sock, left_speed, right_speed-SPEED_STEP);
+	} else if (keyval == KEY_DOWN) { 
+		if (left_speed > 0 || right_speed > 0)
+			stop();
+		else
+			set_speed(sock, -SPEED_STEP, -SPEED_STEP);
+	}
 
     return TRUE;
 }
@@ -81,39 +93,61 @@ static gboolean key_release_event( GtkWidget *widget,
 	guint peeked_time = 0;
 
 	peeked_event = gdk_event_get();
-	if (peeked_event != NULL && peeked_event->type == GDK_KEY_PRESS)  {
-		//g_print("peeked a key\n");
+	if (peeked_event != NULL && peeked_event->type == GDK_KEY_PRESS) {
 		peeked_keyval = ((GdkEventKey*)peeked_event)->keyval;
 		peeked_time = ((GdkEventKey*)peeked_event)->time;
-		if (keyval == peeked_keyval) { //&& time == peeked_time)
-			if (keyval == 65362) {
-				left_speed +=6;
-				right_speed +=6;
-				go_forward();
-			} else if (keyval == 65363) { //right 
-				left_speed =- 3;
-				go_forward();
-			} else if (keyval == 65361) { //left 
-				right_speed =- 3;
-				go_forward();
+		if (keyval == peeked_keyval) { // && time == peeked_time)
+			g_print ("[%d] extra key press (%s) [%d] occurred.\n",
+					 time,((GdkEventKey*)event)->string,keyval);
+			if (keyval == KEY_UP) {
+				g_print ("Going Faster.\n");
+				set_speed(sock, left_speed + SPEED_STEP, right_speed + SPEED_STEP);
+			} else if (keyval == KEY_DOWN) {
+				g_print ("Going Slower.\n");
+				set_speed(sock, left_speed - SPEED_STEP, right_speed - SPEED_STEP);
+			} else if (keyval == KEY_RIGHT) {
+				g_print ("Going more right\n");
+				set_speed(sock, left_speed-SPEED_STEP, right_speed);
+			} else if (keyval == KEY_LEFT) {
+				g_print ("Going more left\n");
+				set_speed(sock, left_speed, right_speed-SPEED_STEP);
 			}
-			return TRUE;			
+			return TRUE;
 		}
 	}
 
-	if (keyval == 65362) {
-		left_speed=10;
-		right_speed=10;
-		stop();
-	} else if (keyval == 65363) {
-		left_speed=right_speed;
-		go_forward();
-	} else if (keyval == 65361) {
-		right_speed=left_speed;
-		go_forward();
+	g_print ("[%d] key release event of (%s) [%d] occurred.\n", 
+	          time, ((GdkEventKey*)event)->string, keyval);
+
+	if (keyval == KEY_UP) {
+		g_print("Up key released. Stopping slowly.\n");
+		while ( left_speed > 0 || right_speed > 0 ) {
+			if (left_speed > 0)
+				left_speed -= SPEED_STEP;
+			if (right_speed > 0)
+				right_speed -= SPEED_STEP;
+			set_speed(sock, left_speed, right_speed);
+			usleep(25000);
+		} 
 	}
 
-	g_print ("[%d] key release event of (%s) [%d] occurred.\n",time,((GdkEventKey*)event)->string,keyval);
+	if (keyval == KEY_DOWN) {
+		g_print("Down key released. Stopping slowly.\n");
+		while ( left_speed < 0 || right_speed < 0 ) {
+			if (left_speed < 0)
+				left_speed += SPEED_STEP;
+			if (right_speed < 0)
+				right_speed += SPEED_STEP;
+			set_speed(sock, left_speed, right_speed);
+			usleep(10000);
+		} 
+	}
+
+	if (keyval == KEY_LEFT || keyval == KEY_RIGHT) {
+		g_print("Left or released pressed. Time to straighten out.\n");
+		int new_speed = MAX(left_speed,right_speed);
+		set_speed(sock, new_speed, new_speed);
+	}
 
     return TRUE;
 }
@@ -174,9 +208,22 @@ int roombad_connect() {
             s, sizeof s);
     printf("client: connecting to %s\n", s);
 
-	send(sockfd, "F1", 2, 0);
-	sleep(1);
+	/* send(sockfd, "F1", 2, 0); */
+	/* sleep(1); */
+	/* send(sockfd, "S", 1, 0); */
+	/* sleep(4); */
+	/* set_speed(sockfd,50,50); */
+	/* sleep(4); */
+	/* set_speed(sockfd,0,0); */
+	/* sleep(4); */
+	/* set_speed(sockfd,-50,50); */
+	/* sleep(4); */
+	/* set_speed(sockfd,0,0); */
+	/* sleep(4); */
+	/* set_speed(sockfd,50,50); */
+	/* sleep(2); */
 	send(sockfd, "S", 1, 0);
+
 
 	return sockfd;
 }
@@ -224,8 +271,7 @@ int main( int   argc,
     /* Sets the border width of the window. */
     gtk_container_set_border_width (GTK_CONTAINER (window), 10);
     
-    /* Creates a new button with the label "Hello World". */
-    button = gtk_button_new_with_label ("Hello World");
+    button = gtk_button_new_with_label ("QUIT");
     
     /* When the button receives the "clicked" signal, it will call the
      * function hello() passing it NULL as its argument.  The hello()
