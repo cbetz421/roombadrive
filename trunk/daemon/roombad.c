@@ -28,7 +28,6 @@ struct _client clients[MAX_CLIENTS];
 int serial_fd = 0;
 _sensor_data sensor_data;
 
-
 static int socket_init() {
 	struct sockaddr_in server_addr;
 	int server_fd = 0;
@@ -174,6 +173,25 @@ static int client_monitor() {
 	return FALSE;
 }
 
+static int send_client(char *data) {
+	int i;
+	
+	for(i=0;i<MAX_CLIENTS;i++) {
+		if(clients[i].fd > 0) {
+			write(clients[i].fd, data, strlen(data));
+		}
+	}
+	return TRUE;
+}
+
+
+void drive_wheels(int left, int right) {
+	char buf[1024];
+	roomba_wheels(serial_fd, left, right);
+	sprintf(buf, "W|%05d|%05d\n", left, right);
+	send_client(buf);
+}
+
 static int client_responder() {
 	int i;
 	
@@ -187,18 +205,18 @@ static int client_responder() {
 					data[1] = 0;
 					fprintf(stderr, "roombad: CMD: F [%s]\n", data);
 					g_string_erase(string, 0, 2);
-					roomba_wheels(serial_fd, 50*atoi(data), 50*atoi(data));
+					drive_wheels(50*atoi(data), 50*atoi(data));
 				} else if(string->str[0] == 'W' && string->len >= 5) {
 					short l,r;
 					memcpy(&l, string->str+1, 2);
 					memcpy(&r, string->str+3, 2);
 					fprintf(stderr, "roombad: CMD: W [%d][%d]\n", l, r);
 					g_string_erase(string, 0, 5);
-					roomba_wheels(serial_fd, l, r);
+					drive_wheels(l, r);
 				} else if(string->str[0] == 'S' && string->len >= 1) {
 					fprintf(stderr, "roombad: CMD: S\n");
 					g_string_erase(string, 0, 1);
-					roomba_stop(serial_fd);
+					drive_wheels(0, 0);
 				} else if(string->str[0] == '\n' || string->str[0] == '\r') {
 					g_string_erase(string, 0, 1);	
 				} else {
@@ -212,23 +230,27 @@ static int client_responder() {
 	return FALSE;
 }
 
+
 static int client_send_stream() {
-	int i;
-	
-	for(i=0;i<MAX_CLIENTS;i++) {
-		if(clients[i].fd > 0) {
-			char buf[1024];
-			sprintf(buf, "S|%d|%d|%d|%d\n", sensor_data.bumps_and_wheel_drops, sensor_data.wall,
-				sensor_data.distance, sensor_data.battery_capacity);
-			write(clients[i].fd, buf, strlen(buf));
-		}
+	char buf[1024];
+
+	if(sensor_data.bumps_and_wheel_drops != 0 || sensor_data.wall != 0 || sensor_data.distance != 0) {
+		sprintf(buf, "S|%02d|%02d|%04d|%04d\n", sensor_data.bumps_and_wheel_drops, sensor_data.wall,
+			sensor_data.distance, sensor_data.battery_capacity);
+		send_client(buf);
 	}
 	return TRUE;
 }
 
+static void pipes_are_yummy (int signum, siginfo_t *si, void *aptr) {}
+
 int main(int argc, char **argv) {
 	int socket_fd = socket_init();
-	
+	struct sigaction sa;
+	bzero(&sa, sizeof(struct sigaction));
+	sa.sa_handler = (void(*)(int))pipes_are_yummy;
+	sigaction (SIGPIPE, &sa, NULL);
+
 	if(argc != 2) {
 		fprintf(stderr, "roombad: Serial port as first param!\n");
 		exit(1);	
